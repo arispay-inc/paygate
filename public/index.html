@@ -3,673 +3,516 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PayGate — x402 Facilitator</title>
+  <title>PayGate — x402 Payment Facilitator for AI Agents</title>
+  <meta name="description" content="Let AI agents pay for your API. Gas-sponsored USDC settlement. One HTTP header. Zero code changes.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600&family=Source+Code+Pro:wght@500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      /* Stripe palette */
-      --purple: #533afd;
-      --purple-hover: #4434d4;
-      --purple-deep: #2e2b8c;
-      --purple-light: #b9b9f9;
-      --purple-dim: rgba(83,58,253,0.05);
-      --navy: #061b31;
-      --label: #273951;
-      --body: #64748d;
-      --bg: #ffffff;
-      --surface: #ffffff;
-      --border: #e5edf5;
-      --border-focus: #533afd;
-      --brand-dark: #1c1e54;
-      --ruby: #ea2261;
-      --magenta: #f96bee;
-      --magenta-light: #ffd7ef;
-      --green: #15be53;
-      --green-bg: rgba(21,190,83,0.2);
-      --green-border: rgba(21,190,83,0.4);
-      --green-text: #108c3d;
-      --red: #ea2261;
-      --red-bg: rgba(234,34,97,0.08);
-      --amber: #9b6829;
-      --amber-bg: rgba(155,104,41,0.1);
-
-      /* Shadows (blue-tinted, Stripe signature) */
-      --shadow-sm: rgba(50,50,93,0.08) 0px 3px 6px, rgba(0,0,0,0.04) 0px 2px 4px;
-      --shadow-md: rgba(50,50,93,0.15) 0px 15px 35px -5px, rgba(0,0,0,0.06) 0px 5px 15px -5px;
-      --shadow-lg: rgba(50,50,93,0.25) 0px 30px 45px -30px, rgba(0,0,0,0.1) 0px 18px 36px -18px;
-
-      /* Radius */
-      --r-sm: 4px;
-      --r-md: 6px;
-      --r-lg: 8px;
+      --black: #000000;
+      --white: #ffffff;
+      --gray-bg: #f5f5f7;
+      --text-primary: #1d1d1f;
+      --text-secondary: rgba(0,0,0,0.56);
+      --text-tertiary: rgba(0,0,0,0.36);
+      --text-on-dark: #ffffff;
+      --text-on-dark-secondary: rgba(255,255,255,0.7);
+      --text-on-dark-tertiary: rgba(255,255,255,0.48);
+      --blue: #0071e3;
+      --blue-hover: #0077ED;
+      --link-light: #0066cc;
+      --link-dark: #2997ff;
+      --surface-dark: #1d1d1f;
+      --surface-elevated: #2a2a2d;
+      --green: #34c759;
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f6f9fc;
-      color: var(--body);
-      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      background: var(--black);
+      color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
-      font-size: 16px;
-      font-weight: 300;
-      line-height: 1.4;
+      -moz-osx-font-smoothing: grayscale;
+      font-size: 17px;
+      line-height: 1.47;
+      letter-spacing: -0.374px;
     }
 
-    h1, h2, h3 { color: var(--navy); font-weight: 300; }
+    /* ── Nav ────────────────────────────────────── */
 
-    /* ── Layout ────────────────────────────────── */
-
-    .app { max-width: 1080px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
-
-    .header {
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 48px;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nav-inner {
+      max-width: 980px; width: 100%; padding: 0 22px;
       display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 2rem; padding-bottom: 1.5rem;
-      border-bottom: 1px solid var(--border);
     }
-    .header-left { display: flex; align-items: center; gap: 12px; }
-    .logo {
-      width: 32px; height: 32px; border-radius: var(--r-sm);
-      background: var(--purple); display: flex; align-items: center; justify-content: center;
-      font-weight: 600; font-size: 13px; color: white; letter-spacing: -0.3px;
+    .nav-brand {
+      color: var(--text-on-dark); font-size: 16px; font-weight: 600;
+      letter-spacing: -0.4px; text-decoration: none;
     }
-    .header h1 { font-size: 18px; font-weight: 400; letter-spacing: -0.2px; }
-    .header h1 span { color: var(--body); font-weight: 300; margin-left: 6px; font-size: 14px; }
-
-    /* ── Badges ────────────────────────────────── */
-
-    .badge {
-      display: inline-flex; align-items: center; padding: 1px 6px;
-      border-radius: var(--r-sm); font-size: 10px; font-weight: 300;
+    .nav-links { display: flex; gap: 28px; align-items: center; }
+    .nav-links a {
+      color: rgba(255,255,255,0.8); font-size: 12px; font-weight: 400;
+      text-decoration: none; transition: color 0.2s;
     }
-    .badge-green { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
-    .badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(83,58,253,0.15); }
-    .badge-amber { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(155,104,41,0.2); }
-
-    /* ── Views ─────────────────────────────────── */
-
-    #auth-view, #dashboard-view { display: none; }
-    .active-view { display: block !important; }
-
-    /* ── Navigation ────────────────────────────── */
-
-    .nav {
-      display: flex; gap: 0; background: var(--bg);
-      border-radius: var(--r-md); margin-bottom: 2rem;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
+    .nav-links a:hover { color: var(--text-on-dark); }
+    .nav-cta {
+      background: var(--blue) !important; color: white !important;
+      padding: 4px 14px; border-radius: 980px; font-size: 12px !important;
     }
-    .nav-btn {
-      flex: 1; padding: 10px 16px; text-align: center;
-      font-size: 14px; font-weight: 400; color: var(--body);
-      background: transparent; border: none; cursor: pointer;
-      transition: all 0.15s; font-family: inherit;
-      border-right: 1px solid var(--border);
+    .nav-cta:hover { background: var(--blue-hover) !important; }
+
+    /* ── Sections ───────────────────────────────── */
+
+    section { width: 100%; }
+    .section-inner {
+      max-width: 980px; margin: 0 auto; padding: 0 22px;
     }
-    .nav-btn:last-child { border-right: none; }
-    .nav-btn:first-child { border-radius: var(--r-md) 0 0 var(--r-md); }
-    .nav-btn:last-child { border-radius: 0 var(--r-md) var(--r-md) 0; }
-    .nav-btn:hover { color: var(--navy); background: rgba(50,50,93,0.03); }
-    .nav-btn.active { color: var(--purple); background: var(--purple-dim); font-weight: 400; }
+    .dark { background: var(--black); color: var(--text-on-dark); }
+    .light { background: var(--gray-bg); color: var(--text-primary); }
 
-    /* ── Cards ─────────────────────────────────── */
+    /* ── Hero ───────────────────────────────────── */
 
+    .hero {
+      padding: 160px 0 100px; text-align: center;
+    }
+    .hero-overline {
+      font-size: 17px; font-weight: 400; color: var(--text-on-dark-secondary);
+      margin-bottom: 12px; letter-spacing: -0.2px;
+    }
+    .hero h1 {
+      font-size: 56px; font-weight: 600; line-height: 1.07;
+      letter-spacing: -0.28px; color: var(--text-on-dark);
+      margin-bottom: 16px;
+    }
+    .hero p {
+      font-size: 21px; font-weight: 400; line-height: 1.38;
+      color: var(--text-on-dark-secondary); max-width: 600px; margin: 0 auto 40px;
+      letter-spacing: -0.2px;
+    }
+    .hero-ctas { display: flex; gap: 20px; justify-content: center; align-items: center; }
+    .btn-primary {
+      background: var(--blue); color: white; padding: 12px 28px;
+      border-radius: 980px; font-size: 17px; font-weight: 400;
+      text-decoration: none; transition: background 0.2s;
+      letter-spacing: -0.2px; display: inline-block;
+    }
+    .btn-primary:hover { background: var(--blue-hover); }
+    .link-arrow {
+      color: var(--link-dark); font-size: 17px; font-weight: 400;
+      text-decoration: none; letter-spacing: -0.2px;
+    }
+    .link-arrow:hover { text-decoration: underline; }
+    .link-arrow::after { content: ' \203A'; }
+
+    /* ── Flow diagram ──────────────────────────── */
+
+    .flow {
+      padding: 80px 0;
+    }
+    .flow-visual {
+      background: var(--surface-elevated); border-radius: 12px;
+      padding: 48px 40px; font-family: 'Source Code Pro', monospace;
+      font-size: 14px; line-height: 2.2; color: var(--text-on-dark-secondary);
+      max-width: 680px; margin: 0 auto;
+    }
+    .flow-visual .step {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .flow-num {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(255,255,255,0.08); color: var(--text-on-dark-tertiary);
+      font-size: 11px; font-weight: 500; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    .flow-highlight { color: var(--text-on-dark); }
+    .flow-blue { color: var(--link-dark); }
+    .flow-green { color: var(--green); }
+
+    /* ── Features grid ─────────────────────────── */
+
+    .features {
+      padding: 100px 0;
+    }
+    .features h2 {
+      font-size: 40px; font-weight: 600; line-height: 1.10;
+      text-align: center; margin-bottom: 12px; color: var(--text-primary);
+      letter-spacing: -0.4px;
+    }
+    .features .subtitle {
+      font-size: 17px; color: var(--text-secondary); text-align: center;
+      max-width: 500px; margin: 0 auto 64px;
+    }
+    .grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    }
     .card {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 24px; margin-bottom: 16px;
-      box-shadow: var(--shadow-sm);
+      background: var(--white); border-radius: 12px; padding: 40px 32px;
     }
-    .card h2 { font-size: 18px; font-weight: 300; letter-spacing: -0.2px; margin-bottom: 4px; }
-    .card p.sub { color: var(--body); font-size: 14px; font-weight: 300; margin-bottom: 16px; }
-
-    /* ── Stats ─────────────────────────────────── */
-
-    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-    .stat {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 20px;
-      box-shadow: var(--shadow-sm);
+    .card-icon {
+      font-size: 32px; margin-bottom: 20px; display: block;
     }
-    .stat .label {
-      font-size: 12px; color: var(--body); font-weight: 400;
-      text-transform: uppercase; letter-spacing: 0.5px;
+    .card h3 {
+      font-size: 21px; font-weight: 600; line-height: 1.19;
+      margin-bottom: 8px; color: var(--text-primary);
+      letter-spacing: -0.2px;
     }
-    .stat .value {
-      font-size: 28px; font-weight: 300; margin-top: 4px;
-      letter-spacing: -0.5px; color: var(--navy);
-      font-variant-numeric: tabular-nums;
+    .card p {
+      font-size: 14px; line-height: 1.43; color: var(--text-secondary);
+      letter-spacing: -0.224px;
     }
-    .stat .value.green { color: var(--green-text); }
-    .stat .value.purple { color: var(--purple); }
 
-    /* ── Table ─────────────────────────────────── */
+    /* ── Code section ──────────────────────────── */
 
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      text-align: left; padding: 8px 12px; color: var(--body);
-      font-weight: 400; font-size: 12px; text-transform: uppercase;
-      letter-spacing: 0.5px; border-bottom: 1px solid var(--border);
+    .code-section {
+      padding: 100px 0;
     }
-    td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
-    tr:hover td { background: rgba(50,50,93,0.02); }
-    .mono { font-family: 'Source Code Pro', monospace; font-size: 12px; font-weight: 500; }
-    .truncate { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }
-
-    /* ── Forms ─────────────────────────────────── */
-
-    .form-group { margin-bottom: 14px; }
-    .form-group label {
-      display: block; font-size: 14px; font-weight: 400;
-      color: var(--label); margin-bottom: 4px;
+    .code-section h2 {
+      font-size: 40px; font-weight: 600; line-height: 1.10;
+      text-align: center; margin-bottom: 12px;
+      letter-spacing: -0.4px;
     }
-    input, select {
-      width: 100%; padding: 8px 12px;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: var(--r-sm); color: var(--navy);
-      font-family: inherit; font-size: 14px; font-weight: 300;
-      outline: none; transition: border 0.15s, box-shadow 0.15s;
+    .code-section .subtitle {
+      font-size: 17px; color: var(--text-on-dark-secondary); text-align: center;
+      max-width: 500px; margin: 0 auto 48px;
     }
-    input:focus, select:focus {
-      border-color: var(--purple);
-      box-shadow: 0 0 0 2px rgba(83,58,253,0.1);
+    .code-tabs {
+      display: flex; gap: 0; justify-content: center; margin-bottom: 24px;
     }
-    input::placeholder { color: var(--body); }
-
-    /* ── Buttons ───────────────────────────────── */
-
-    .btn {
-      padding: 8px 16px; border-radius: var(--r-sm);
-      font-weight: 400; font-size: 16px; cursor: pointer;
-      border: none; font-family: inherit; transition: all 0.15s;
-      letter-spacing: normal;
+    .code-tab {
+      background: transparent; border: none; color: var(--text-on-dark-tertiary);
+      font-size: 14px; font-weight: 400; padding: 8px 20px; cursor: pointer;
+      border-bottom: 2px solid transparent; font-family: inherit;
+      letter-spacing: -0.2px; transition: color 0.2s;
     }
-    .btn-primary { background: var(--purple); color: white; }
-    .btn-primary:hover { background: var(--purple-hover); }
-    .btn-ghost {
-      background: transparent; color: var(--purple);
-      border: 1px solid var(--purple-light);
+    .code-tab.active { color: var(--text-on-dark); border-bottom-color: var(--text-on-dark); }
+    .code-tab:hover { color: var(--text-on-dark-secondary); }
+    .code-block {
+      background: var(--surface-elevated); border-radius: 12px;
+      padding: 32px; max-width: 700px; margin: 0 auto;
+      overflow-x: auto; display: none;
     }
-    .btn-ghost:hover { background: var(--purple-dim); }
-    .btn-sm { padding: 6px 12px; font-size: 14px; }
-
-    /* ── Features ──────────────────────────────── */
-
-    .features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
-    .feature {
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: var(--r-md); padding: 20px;
-      box-shadow: var(--shadow-sm);
-      transition: box-shadow 0.2s;
+    .code-block.active { display: block; }
+    .code-block pre {
+      font-family: 'Source Code Pro', monospace; font-size: 13px;
+      line-height: 1.8; color: var(--text-on-dark-secondary);
+      white-space: pre; margin: 0;
     }
-    .feature:hover { box-shadow: var(--shadow-md); }
-    .feature h3 { font-size: 16px; font-weight: 300; letter-spacing: -0.1px; margin-bottom: 4px; }
-    .feature p { font-size: 14px; color: var(--body); font-weight: 300; }
-    .feature .icon { font-size: 20px; margin-bottom: 8px; }
+    .code-block .kw { color: #ff7eb6; }
+    .code-block .str { color: var(--green); }
+    .code-block .fn { color: var(--link-dark); }
+    .code-block .cm { color: var(--text-on-dark-tertiary); }
 
-    /* ── Code blocks ──────────────────────────── */
+    /* ── Chains ─────────────────────────────────── */
 
-    .code {
-      background: var(--brand-dark); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: var(--r-md); padding: 20px;
-      font-family: 'Source Code Pro', monospace; font-size: 12px; font-weight: 500;
-      overflow-x: auto; line-height: 2.0; color: rgba(255,255,255,0.7); white-space: pre;
+    .chains {
+      padding: 100px 0;
     }
-    .code .kw { color: var(--purple-light); }
-    .code .str { color: #7dd3fc; }
-    .code .cm { color: rgba(255,255,255,0.35); }
-    .code .fn { color: #fbbf24; }
-
-    /* ── Network list ─────────────────────────── */
-
-    .network-list { display: flex; flex-direction: column; gap: 6px; }
-    .network-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; background: #f6f9fc;
-      border: 1px solid var(--border); border-radius: var(--r-sm);
+    .chains h2 {
+      font-size: 40px; font-weight: 600; line-height: 1.10;
+      text-align: center; margin-bottom: 12px; color: var(--text-primary);
+      letter-spacing: -0.4px;
     }
-    .network-item .name { font-weight: 400; font-size: 14px; color: var(--navy); }
-    .network-item .id { color: var(--body); font-size: 12px; font-family: 'Source Code Pro', monospace; }
-
-    /* ── Endpoints ────────────────────────────── */
-
-    .endpoint {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; background: #f6f9fc;
-      border: 1px solid var(--border); border-radius: var(--r-sm);
-      margin-bottom: 6px;
+    .chains .subtitle {
+      font-size: 17px; color: var(--text-secondary); text-align: center;
+      max-width: 500px; margin: 0 auto 48px;
     }
-    .endpoint .method {
-      font-family: 'Source Code Pro', monospace; font-weight: 700;
-      font-size: 11px; padding: 1px 6px; border-radius: var(--r-sm);
-      margin-right: 8px;
+    .chain-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+      max-width: 700px; margin: 0 auto;
     }
-    .endpoint .method-get { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
-    .endpoint .method-post { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(83,58,253,0.15); }
-    .endpoint .path { font-family: 'Source Code Pro', monospace; font-size: 13px; color: var(--navy); }
-    .endpoint .price { font-weight: 400; color: var(--green-text); font-size: 14px; font-variant-numeric: tabular-nums; }
-    .endpoint .desc { color: var(--body); font-size: 12px; margin-top: 2px; }
-
-    /* ── Messages ─────────────────────────────── */
-
-    .msg { padding: 10px 14px; border-radius: var(--r-sm); font-size: 13px; font-weight: 400; margin-bottom: 14px; }
-    .msg-error { background: var(--red-bg); color: var(--red); border: 1px solid rgba(234,34,97,0.15); }
-    .msg-success { background: var(--green-bg); color: var(--green-text); border: 1px solid var(--green-border); }
-
-    /* ── Sections ──────────────────────────────── */
-
-    .section { display: none; }
-    .section.active { display: block; }
-    .empty { text-align: center; padding: 32px; color: var(--body); }
-    .copy-btn {
-      background: none; border: 1px solid var(--border); color: var(--body);
-      cursor: pointer; font-size: 11px; padding: 2px 8px; border-radius: var(--r-sm);
-      font-family: inherit; transition: all 0.15s;
+    .chain-card {
+      background: var(--white); border-radius: 12px; padding: 32px 20px;
+      text-align: center;
     }
-    .copy-btn:hover { border-color: var(--purple); color: var(--purple); }
-
-    /* ── Login ─────────────────────────────────── */
-
-    .login-box { max-width: 420px; margin: 5rem auto; }
-    .login-box .logo-big {
-      width: 48px; height: 48px; border-radius: var(--r-lg);
-      background: var(--purple); display: flex; align-items: center; justify-content: center;
-      font-weight: 600; font-size: 18px; color: white; margin: 0 auto 20px;
-      box-shadow: var(--shadow-md);
+    .chain-name {
+      font-size: 17px; font-weight: 600; color: var(--text-primary);
+      margin-bottom: 4px; letter-spacing: -0.2px;
     }
-    .login-box h1 { text-align: center; font-size: 28px; font-weight: 300; letter-spacing: -0.5px; margin-bottom: 6px; }
-    .login-box .sub-head { text-align: center; color: var(--body); font-size: 16px; font-weight: 300; margin-bottom: 32px; }
-    .or { text-align: center; color: var(--body); font-size: 13px; margin: 20px 0; position: relative; }
-    .or::before, .or::after {
-      content: ''; position: absolute; top: 50%; height: 1px;
-      background: var(--border); width: calc(50% - 20px);
+    .chain-id {
+      font-size: 12px; font-family: 'Source Code Pro', monospace;
+      color: var(--text-tertiary);
     }
-    .or::before { left: 0; }
-    .or::after { right: 0; }
 
-    /* ── Dark section ─────────────────────────── */
+    /* ── CTA section ───────────────────────────── */
 
-    .dark-section {
-      background: var(--brand-dark); border-radius: var(--r-lg);
-      padding: 32px; margin-bottom: 16px; color: rgba(255,255,255,0.7);
+    .cta-section {
+      padding: 120px 0; text-align: center;
     }
-    .dark-section h2 { color: white; }
-    .dark-section p.sub { color: rgba(255,255,255,0.5); }
+    .cta-section h2 {
+      font-size: 48px; font-weight: 600; line-height: 1.08;
+      margin-bottom: 16px; letter-spacing: -0.4px;
+    }
+    .cta-section p {
+      font-size: 21px; color: var(--text-on-dark-secondary);
+      margin-bottom: 40px; letter-spacing: -0.2px;
+    }
+    .cta-buttons { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
 
-    /* ── Responsive ───────────────────────────── */
+    /* ── Footer ─────────────────────────────────── */
+
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.08); padding: 20px 0;
+    }
+    .footer-inner {
+      max-width: 980px; margin: 0 auto; padding: 0 22px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .footer-text {
+      font-size: 12px; color: var(--text-on-dark-tertiary);
+      letter-spacing: -0.1px;
+    }
+    .footer-links { display: flex; gap: 24px; }
+    .footer-links a {
+      font-size: 12px; color: var(--text-on-dark-tertiary);
+      text-decoration: none;
+    }
+    .footer-links a:hover { color: var(--text-on-dark-secondary); }
+
+    /* ── Responsive ─────────────────────────────── */
 
     @media (max-width: 768px) {
-      .stats { grid-template-columns: repeat(2, 1fr); }
-      .features { grid-template-columns: 1fr; }
-      .login-box h1 { font-size: 22px; }
+      .hero h1 { font-size: 36px; }
+      .hero p { font-size: 17px; }
+      .features h2, .code-section h2, .chains h2 { font-size: 28px; }
+      .cta-section h2 { font-size: 32px; }
+      .grid { grid-template-columns: 1fr; }
+      .chain-grid { grid-template-columns: repeat(2, 1fr); }
+      .hero-ctas { flex-direction: column; }
+      .flow-visual { padding: 32px 24px; font-size: 13px; }
+      .nav-links a:not(.nav-cta) { display: none; }
     }
+
     @media (max-width: 480px) {
-      .stats { grid-template-columns: 1fr; }
-      .nav { flex-direction: column; }
-      .nav-btn { border-right: none; border-bottom: 1px solid var(--border); }
-      .nav-btn:last-child { border-bottom: none; }
-      .nav-btn:first-child { border-radius: var(--r-md) var(--r-md) 0 0; }
-      .nav-btn:last-child { border-radius: 0 0 var(--r-md) var(--r-md); }
+      .hero { padding: 120px 0 60px; }
+      .hero h1 { font-size: 28px; }
+      .features, .code-section, .chains { padding: 64px 0; }
+      .cta-section { padding: 80px 0; }
+      .chain-grid { grid-template-columns: 1fr 1fr; }
+      .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
     }
   </style>
 </head>
 <body>
-<div class="app">
 
-  <!-- ═══ AUTH ═══ -->
-  <div id="auth-view" class="active-view">
-    <div class="login-box">
-      <div class="logo-big">Ag</div>
-      <h1>PayGate</h1>
-      <p class="sub-head">The x402 facilitator for the internet</p>
+<!-- ── Nav ──────────────────────────────────────── -->
 
-      <div class="card" style="box-shadow:var(--shadow-lg)">
-        <h2>Sign in</h2>
-        <p class="sub">Enter your merchant API key</p>
-        <div id="login-msg"></div>
-        <div class="form-group">
-          <label>API Key</label>
-          <input type="password" id="login-key" placeholder="agfac_...">
-        </div>
-        <button class="btn btn-primary" style="width:100%" onclick="login()">Sign in</button>
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="nav-brand">PayGate</a>
+    <div class="nav-links">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#features">Features</a>
+      <a href="#integrate">Integrate</a>
+      <a href="#chains">Chains</a>
+      <a href="https://github.com/stevemilton/paygate" class="nav-cta">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── Hero ─────────────────────────────────────── -->
+
+<section class="hero dark">
+  <div class="section-inner">
+    <p class="hero-overline">x402 Payment Facilitator</p>
+    <h1>Let AI agents<br>pay for your API.</h1>
+    <p>Gas-sponsored USDC settlement. One HTTP header.<br>Zero code changes. Your API already works. Now make it earn.</p>
+    <div class="hero-ctas">
+      <a href="https://github.com/stevemilton/paygate" class="btn-primary">Get Started</a>
+      <a href="#how-it-works" class="link-arrow">See how it works</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Flow ─────────────────────────────────────── -->
+
+<section class="flow dark" id="how-it-works">
+  <div class="section-inner">
+    <div class="flow-visual">
+      <div class="step"><span class="flow-num">1</span> <span>Agent calls <span class="flow-highlight">your API</span></span></div>
+      <div class="step"><span class="flow-num">2</span> <span>Your API returns <span class="flow-blue">HTTP 402</span> + price</span></div>
+      <div class="step"><span class="flow-num">3</span> <span>Agent signs USDC payment <span class="flow-highlight">off-chain</span></span></div>
+      <div class="step"><span class="flow-num">4</span> <span>Agent retries with <span class="flow-blue">X-PAYMENT</span> header</span></div>
+      <div class="step"><span class="flow-num">5</span> <span>PayGate <span class="flow-green">settles on-chain</span> &rarr; returns txHash</span></div>
+      <div class="step"><span class="flow-num">6</span> <span>Your API serves the response. <span class="flow-green">You get paid.</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Features ─────────────────────────────────── -->
+
+<section class="features light" id="features">
+  <div class="section-inner">
+    <h2>Built for production.</h2>
+    <p class="subtitle">Everything you need to monetize your API for AI agents.</p>
+    <div class="grid">
+      <div class="card">
+        <span class="card-icon" aria-hidden="true">&#9981;</span>
+        <h3>Gas Sponsored</h3>
+        <p>Agents never need ETH. PayGate's relayer covers gas on every settlement. Your customers just sign.</p>
       </div>
-
-      <div class="or">or</div>
-
-      <div class="card" style="box-shadow:var(--shadow-lg)">
-        <h2>Create account</h2>
-        <p class="sub">Start accepting x402 payments in minutes</p>
-        <div id="register-msg"></div>
-        <div class="form-group"><label>Business name</label><input id="reg-name" placeholder="ArcticX AI"></div>
-        <div class="form-group"><label>Email</label><input type="email" id="reg-email" placeholder="team@arcticx.ai"></div>
-        <div class="form-group"><label>USDC wallet address</label><input id="reg-wallet" placeholder="0x..."></div>
-        <button class="btn btn-primary" style="width:100%" onclick="register()">Create account</button>
+      <div class="card">
+        <span class="card-icon" aria-hidden="true">&#128274;</span>
+        <h3>Non-Custodial</h3>
+        <p>USDC goes directly from agent wallet to your wallet via the USDC contract. PayGate never holds funds.</p>
       </div>
-
-      <div style="text-align:center;margin-top:32px;font-size:13px;color:var(--body)">
-        Gas-sponsored settlement on Base, Ethereum, and Polygon
+      <div class="card">
+        <span class="card-icon" aria-hidden="true">&#9889;</span>
+        <h3>One Header</h3>
+        <p>The entire payment flow is a single HTTP header. No SDKs required. No checkout pages. No redirects.</p>
+      </div>
+      <div class="card">
+        <span class="card-icon" aria-hidden="true">&#128737;</span>
+        <h3>Crash-Safe Settlement</h3>
+        <p>Reserve-before-settle nonce pattern. If the process crashes mid-settlement, no double-spend is possible.</p>
+      </div>
+      <div class="card">
+        <span class="card-icon" aria-hidden="true">&#127760;</span>
+        <h3>Four Chains</h3>
+        <p>Base, Ethereum, Polygon. Testnet and mainnet. One relayer key works across all EVM chains.</p>
+      </div>
+      <div class="card">
+        <span class="card-icon" aria-hidden="true">&#128260;</span>
+        <h3>Two Modes</h3>
+        <p>Facilitator API for any merchant. Or reverse proxy mode — put PayGate in front of your API, zero code changes.</p>
       </div>
     </div>
   </div>
+</section>
 
-  <!-- ═══ DASHBOARD ═══ -->
-  <div id="dashboard-view">
-    <div class="header">
-      <div class="header-left">
-        <div class="logo">Ag</div>
-        <h1 id="merchant-name">PayGate <span>Dashboard</span></h1>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+<!-- ── Code ─────────────────────────────────────── -->
+
+<section class="code-section dark" id="integrate">
+  <div class="section-inner">
+    <h2>Integrate in minutes.</h2>
+    <p class="subtitle">Three ways to add PayGate to your stack.</p>
+
+    <div class="code-tabs">
+      <button class="code-tab active" data-tab="facilitator">Facilitator API</button>
+      <button class="code-tab" data-tab="proxy">Reverse Proxy</button>
+      <button class="code-tab" data-tab="agent">Agent (payagent)</button>
     </div>
 
-    <div class="nav">
-      <button class="nav-btn active" onclick="showSection('overview',this)">Overview</button>
-      <button class="nav-btn" onclick="showSection('endpoints',this)">Endpoints</button>
-      <button class="nav-btn" onclick="showSection('transactions',this)">Transactions</button>
-      <button class="nav-btn" onclick="showSection('integrate',this)">Integrate</button>
-    </div>
-
-    <!-- ── Overview ────────────────────────── -->
-    <div id="sec-overview" class="section active">
-      <div class="stats">
-        <div class="stat">
-          <div class="label">Revenue</div>
-          <div class="value green" id="stat-revenue">$0.00</div>
-        </div>
-        <div class="stat">
-          <div class="label">Transactions</div>
-          <div class="value" id="stat-txns">0</div>
-        </div>
-        <div class="stat">
-          <div class="label">Endpoints</div>
-          <div class="value" id="stat-endpoints">0</div>
-        </div>
-        <div class="stat">
-          <div class="label">Settlement</div>
-          <div class="value purple" style="font-size:16px" id="stat-settlement">&mdash;</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Wallet</h2>
-        <p class="sub">Payments settle directly to your wallet via EIP-3009. Non-custodial.</p>
-        <div style="display:flex;align-items:center;gap:8px">
-          <code class="mono" id="merchant-wallet" style="color:var(--navy);font-size:14px">&mdash;</code>
-          <button class="copy-btn" onclick="copyText(document.getElementById('merchant-wallet').textContent)">Copy</button>
-        </div>
-        <div style="margin-top:10px;display:flex;gap:6px">
-          <span class="badge badge-green">Non-custodial</span>
-          <span class="badge badge-purple">Gas sponsored</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Proxy URL</h2>
-        <p class="sub">Agents call this URL. PayGate handles 402, settlement, and proxying.</p>
-        <div style="display:flex;align-items:center;gap:8px">
-          <code class="mono" id="proxy-url" style="color:var(--purple);font-size:13px">&mdash;</code>
-          <button class="copy-btn" onclick="copyText(document.getElementById('proxy-url').textContent)">Copy</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Recent transactions</h2>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Time</th><th>Endpoint</th><th>Payer</th><th>Amount</th><th>Status</th></tr></thead>
-            <tbody id="recent-txns"><tr><td colspan="5" class="empty">No transactions yet</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Endpoints ───────────────────────── -->
-    <div id="sec-endpoints" class="section">
-      <div class="card">
-        <h2>Paywalled endpoints</h2>
-        <p class="sub">Each endpoint is proxied through PayGate with x402 payment gating.</p>
-        <div id="endpoints-list"></div>
-      </div>
-      <div class="card">
-        <h2>Add endpoint</h2>
-        <p class="sub">Register a new API endpoint behind the paywall.</p>
-        <div id="add-ep-msg"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="form-group"><label>Path</label><input id="ep-path" placeholder="/v1/data"></div>
-          <div class="form-group"><label>Method</label><select id="ep-method"><option>GET</option><option>POST</option></select></div>
-        </div>
-        <div class="form-group"><label>Target URL</label><input id="ep-target" placeholder="https://api.arcticx.ai/v1/data"></div>
-        <div style="display:grid;grid-template-columns:1fr 2fr;gap:12px">
-          <div class="form-group"><label>Price (USDC base units)</label><input id="ep-price" placeholder="100000"></div>
-          <div class="form-group"><label>Description</label><input id="ep-desc" placeholder="AI analysis endpoint"></div>
-        </div>
-        <button class="btn btn-primary" onclick="addEndpoint()">Add endpoint</button>
-      </div>
-    </div>
-
-    <!-- ── Transactions ────────────────────── -->
-    <div id="sec-transactions" class="section">
-      <div class="card">
-        <h2>Transaction history</h2>
-        <p class="sub">Every payment settled through your PayGate proxy or facilitator.</p>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Time</th><th>Endpoint</th><th>Payer</th><th>Amount</th><th>TxHash</th><th>Status</th></tr></thead>
-            <tbody id="all-txns"><tr><td colspan="6" class="empty">No transactions</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Integrate ───────────────────────── -->
-    <div id="sec-integrate" class="section">
-      <div class="features">
-        <div class="feature">
-          <div class="icon">&#9889;</div>
-          <h3>Gas sponsored</h3>
-          <p>Agents sign off-chain. PayGate's relayer pays gas for every settlement. Your customers never need ETH.</p>
-        </div>
-        <div class="feature">
-          <div class="icon">&#128274;</div>
-          <h3>Non-custodial</h3>
-          <p>USDC flows directly to your wallet via EIP-3009 transferWithAuthorization. Atomic, on-chain.</p>
-        </div>
-        <div class="feature">
-          <div class="icon">&#127760;</div>
-          <h3>Multi-chain</h3>
-          <p>Base, Ethereum, and Polygon. Same relayer key, same facilitator API. Settle wherever your customers are.</p>
-        </div>
-        <div class="feature">
-          <div class="icon">&#128640;</div>
-          <h3>One-liner SDK</h3>
-          <p>Install <code class="mono" style="color:var(--purple)">@agfac/middleware</code> and add one line to gate any Express or Fastify route.</p>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>SDK middleware</h2>
-        <p class="sub">Install the SDK and gate routes directly. Recommended for new integrations.</p>
-        <div class="code"><span class="cm">// npm install @agfac/middleware</span>
-<span class="kw">import</span> { agfac402 } <span class="kw">from</span> <span class="str">'@agfac/middleware/express'</span>;
-
-<span class="kw">const</span> <span class="fn">paywall</span> = <span class="fn">agfac402</span>({
-  facilitatorUrl: <span class="str">'https://agfac-production.up.railway.app'</span>,
-  payTo: <span class="str">'<span id="code-wallet">0xYourWallet</span>'</span>,
-});
-
-<span class="cm">// $0.10 per request</span>
-app.<span class="fn">get</span>(<span class="str">'/api/data'</span>, <span class="fn">paywall</span>({ price: 0.10 }), (req, res) =&gt; {
-  res.<span class="fn">json</span>({ data: <span class="str">'premium content'</span>, payment: req.x402 });
-});</div>
-      </div>
-
-      <div class="card">
-        <h2>Reverse proxy</h2>
-        <p class="sub">Register endpoints in the Endpoints tab. PayGate proxies requests &mdash; zero code changes to your API.</p>
-        <div class="code"><span class="cm"># Agents call your proxy URL</span>
-curl <span id="code-proxy" class="str">https://agfac-production.up.railway.app/your-slug/v1/data</span>
-
-<span class="cm"># 402 &rarr; agent signs &rarr; X-PAYMENT header &rarr; PayGate settles &rarr; proxies to your API</span></div>
-      </div>
-
-      <div class="dark-section">
-        <h2>Direct facilitator API</h2>
-        <p class="sub">Handle 402 yourself and call the facilitator to verify and settle.</p>
-        <div class="code" style="background:rgba(0,0,0,0.3);border-color:rgba(255,255,255,0.05)"><span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://agfac-production.up.railway.app/facilitator/settle'</span>, {
+    <div class="code-block active" id="tab-facilitator">
+<pre><span class="cm">// Merchant: verify + settle an agent's payment</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://paygate.arispay.app/facilitator/settle'</span>, {
   method: <span class="str">'POST'</span>,
   headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
   body: JSON.<span class="fn">stringify</span>({
     x402Version: 2,
-    paymentPayload,      <span class="cm">// decoded X-PAYMENT header</span>
-    paymentRequirements   <span class="cm">// your price + wallet</span>
-  }),
+    paymentPayload,     <span class="cm">// from the agent's X-PAYMENT header</span>
+    paymentRequirements <span class="cm">// your 402 response requirements</span>
+  })
 });
 
 <span class="kw">const</span> { success, transaction } = <span class="kw">await</span> res.<span class="fn">json</span>();
-<span class="kw">if</span> (success) <span class="fn">serveContent</span>(); <span class="cm">// USDC settled to your wallet</span></div>
-      </div>
+<span class="cm">// success: true, transaction: "0xabc..."</span></pre>
+    </div>
 
-      <div class="card">
-        <h2>Supported networks</h2>
-        <p class="sub">PayGate settles on-chain across all supported EVM networks. Gas is always sponsored.</p>
-        <div id="facilitator-info" class="network-list"></div>
+    <div class="code-block" id="tab-proxy">
+<pre><span class="cm"># Register your API with PayGate</span>
+curl -X POST https://paygate.arispay.app/api/merchants \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"name":"My API","email":"dev@example.com","wallet":"0x..."}'</span>
+
+<span class="cm"># Add a paywalled endpoint ($0.01 per call)</span>
+curl -X POST https://paygate.arispay.app/api/endpoints \
+  -H <span class="str">"Authorization: Bearer agfac_..."</span> \
+  -d <span class="str">'{"path":"/v1/data","targetUrl":"https://api.example.com/v1/data",
+       "price":"10000","description":"Get data","method":"GET"}'</span>
+
+<span class="cm"># Agents now call: https://paygate.arispay.app/my-api/v1/data</span>
+<span class="cm"># First call → 402. Pay → proxied to your real API.</span></pre>
+    </div>
+
+    <div class="code-block" id="tab-agent">
+<pre><span class="cm">// Agent: pay for an API call with payagent</span>
+<span class="kw">import</span> { <span class="fn">payFetch</span> } <span class="kw">from</span> <span class="str">'payagent'</span>;
+
+<span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">payFetch</span>(<span class="str">'https://api.example.com/v1/data'</span>, {
+  wallet: myWallet,
+  maxBudget: <span class="str">'1.00'</span>, <span class="cm">// max $1.00 USDC</span>
+});
+
+console.<span class="fn">log</span>(response.data);
+<span class="cm">// Payment handled automatically — 402 → sign → retry</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ── Chains ───────────────────────────────────── -->
+
+<section class="chains light" id="chains">
+  <div class="section-inner">
+    <h2>Settle anywhere.</h2>
+    <p class="subtitle">One relayer key. Four chains. Gas always sponsored.</p>
+    <div class="chain-grid">
+      <div class="chain-card">
+        <div class="chain-name">Base</div>
+        <div class="chain-id">eip155:8453</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Ethereum</div>
+        <div class="chain-id">eip155:1</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Polygon</div>
+        <div class="chain-id">eip155:137</div>
+      </div>
+      <div class="chain-card">
+        <div class="chain-name">Base Sepolia</div>
+        <div class="chain-id">eip155:84532</div>
       </div>
     </div>
   </div>
-</div>
+</section>
 
+<!-- ── CTA ──────────────────────────────────────── -->
+
+<section class="cta-section dark">
+  <div class="section-inner">
+    <h2>Your API already works.<br>Now make it earn.</h2>
+    <p>Start settling payments in minutes.</p>
+    <div class="cta-buttons">
+      <a href="https://github.com/stevemilton/paygate" class="btn-primary">View on GitHub</a>
+      <a href="https://github.com/stevemilton/payagent" class="link-arrow">payagent SDK</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Footer ──────────────────────────────────── -->
+
+<footer class="dark">
+  <div class="footer-inner">
+    <span class="footer-text">PayGate by Polar Industries Ltd</span>
+    <div class="footer-links">
+      <a href="https://github.com/stevemilton/paygate">GitHub</a>
+      <a href="https://github.com/stevemilton/payagent">payagent</a>
+      <a href="https://agfac-production.up.railway.app/facilitator">Facilitator API</a>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Code tabs ────────────────────────────────── -->
 <script>
-const BASE = window.location.origin;
-let state = null;
-
-async function login() {
-  const key = document.getElementById('login-key').value.trim();
-  if (!key) return showMsg('login-msg', 'Enter your API key', 'error');
-  try {
-    const r = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: key }) });
-    const d = await r.json();
-    if (!d.success) return showMsg('login-msg', d.error || 'Invalid API key', 'error');
-    state = { ...d.merchant, apiKey: key };
-    localStorage.setItem('agfac_key', key);
-    showDashboard();
-  } catch (e) { showMsg('login-msg', 'Connection error', 'error'); }
-}
-
-async function register() {
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const wallet = document.getElementById('reg-wallet').value.trim();
-  if (!name || !email || !wallet) return showMsg('register-msg', 'All fields are required', 'error');
-  try {
-    const r = await fetch(BASE + '/api/merchants', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, email, wallet }) });
-    const d = await r.json();
-    if (!d.success) return showMsg('register-msg', d.error || 'Registration failed', 'error');
-    showMsg('register-msg', 'Account created. Your API key: ' + d.merchant.apiKey + ' \u2014 save this now, it will not be shown again.', 'success');
-  } catch (e) { showMsg('register-msg', 'Connection error', 'error'); }
-}
-
-function logout() {
-  localStorage.removeItem('agfac_key');
-  state = null;
-  document.getElementById('auth-view').classList.add('active-view');
-  document.getElementById('dashboard-view').classList.remove('active-view');
-}
-
-function showDashboard() {
-  document.getElementById('auth-view').classList.remove('active-view');
-  document.getElementById('dashboard-view').classList.add('active-view');
-  render();
-  loadFacilitator();
-  loadDetail();
-}
-
-function render() {
-  const m = state;
-  if (!m) return;
-  document.getElementById('merchant-name').innerHTML = esc(m.name) + ' <span>Dashboard</span>';
-  document.getElementById('stat-revenue').textContent = '$' + (m.totalRevenue || '0.00');
-  document.getElementById('stat-txns').textContent = m.totalTransactions || '0';
-  document.getElementById('stat-endpoints').textContent = m.endpoints?.length || '0';
-  document.getElementById('merchant-wallet').textContent = m.wallet || '\u2014';
-  document.getElementById('proxy-url').textContent = m.proxyBase || '\u2014';
-  document.getElementById('code-wallet').textContent = m.wallet || '0xYourWallet';
-  document.getElementById('code-proxy').textContent = (m.proxyBase || BASE + '/your-slug') + '/v1/data';
-
-  const el = document.getElementById('endpoints-list');
-  if (m.endpoints?.length) {
-    el.innerHTML = m.endpoints.map(function(ep) {
-      return '<div class="endpoint"><div><span class="method method-' + ep.method.toLowerCase() + '">' + ep.method + '</span><span class="path">' + esc(ep.proxyUrl || m.proxyBase + ep.path) + '</span><div class="desc">' + esc(ep.description || '') + '</div></div><div class="price">$' + (ep.priceUSDC || '0.00') + '</div></div>';
-    }).join('');
-  } else {
-    el.innerHTML = '<div class="empty">No endpoints yet</div>';
-  }
-}
-
-async function loadDetail() {
-  try {
-    const r = await fetch(BASE + '/api/merchants/' + state.id);
-    const d = await r.json();
-    if (!d.endpoints) return;
-    state.endpoints = d.endpoints;
-    document.getElementById('stat-revenue').textContent = '$' + (d.revenue || '0.00');
-    document.getElementById('stat-endpoints').textContent = d.endpoints?.length || '0';
-  } catch {}
-}
-
-async function addEndpoint() {
-  const path = document.getElementById('ep-path').value.trim();
-  const method = document.getElementById('ep-method').value;
-  const targetUrl = document.getElementById('ep-target').value.trim();
-  const price = document.getElementById('ep-price').value.trim();
-  const description = document.getElementById('ep-desc').value.trim();
-  if (!path || !targetUrl || !price || !description) return showMsg('add-ep-msg', 'All fields are required', 'error');
-  try {
-    const r = await fetch(BASE + '/api/endpoints', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.apiKey }, body: JSON.stringify({ path, targetUrl, price, description, method }) });
-    const d = await r.json();
-    if (!d.success) return showMsg('add-ep-msg', d.error || 'Failed', 'error');
-    showMsg('add-ep-msg', 'Endpoint added', 'success');
-    const r2 = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: state.apiKey }) });
-    const d2 = await r2.json();
-    if (d2.success) { state = { ...d2.merchant, apiKey: state.apiKey }; render(); }
-  } catch (e) { showMsg('add-ep-msg', 'Error', 'error'); }
-}
-
-async function loadFacilitator() {
-  try {
-    const r = await fetch(BASE + '/facilitator');
-    const info = await r.json();
-    document.getElementById('stat-settlement').textContent = info.settlement === 'on-chain' ? 'On-chain' : 'Mock';
-    const el = document.getElementById('facilitator-info');
-    var html = info.supportedNetworks.map(function(n) {
-      return '<div class="network-item"><div><div class="name">' + esc(n.chain || n.name) + '</div><div class="id">' + esc(n.network) + '</div></div><span class="badge ' + (n.settlement === 'on-chain' ? 'badge-green' : 'badge-amber') + '">' + n.settlement + '</span></div>';
-    }).join('');
-    if (info.relayer) html += '<div class="network-item"><div><div class="name">Gas relayer</div><div class="id">' + esc(info.relayer) + '</div></div><span class="badge badge-purple">Sponsors gas</span></div>';
-    el.innerHTML = html;
-  } catch {}
-}
-
-function showSection(id, btn) {
-  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
-  document.getElementById('sec-' + id).classList.add('active');
-  document.querySelectorAll('.nav-btn').forEach(function(b) { b.classList.remove('active'); });
-  btn.classList.add('active');
-}
-
-function showMsg(id, text, type) {
-  var el = document.getElementById(id);
-  el.innerHTML = '<div class="msg msg-' + type + '">' + esc(text) + '</div>';
-  if (type === 'success') setTimeout(function() { el.innerHTML = ''; }, 10000);
-}
-
-function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-function copyText(t) { navigator.clipboard.writeText(t).catch(function() {}); }
-
-(async function() {
-  var k = localStorage.getItem('agfac_key');
-  if (k) { document.getElementById('login-key').value = k; await login(); }
-})();
+document.querySelectorAll('.code-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.code-block').forEach(b => b.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
 </script>
+
 </body>
 </html>
