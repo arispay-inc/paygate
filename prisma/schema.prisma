@@ -1,0 +1,84 @@
+// PayGate — Prisma schema (standalone)
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ── Facilitator Nonce (replay protection for x402 settlement) ──────────
+model FacilitatorNonce {
+  id        String    @id @default(cuid())
+  nonce     String    // bytes32 nonce from EIP-3009 authorization
+  network   String    // CAIP-2 format e.g. "eip155:8453"
+  from      String    // payer address
+  txHash    String?   // settlement tx hash
+  settledAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([nonce, network])
+  @@index([from])
+}
+
+// ── Merchant registered for API paywall ──────
+model AgfacMerchant {
+  id              String   @id @default(cuid())
+  slug            String   @unique  // URL-safe slug for proxy routes
+  name            String
+  wallet          String   // USDC wallet address for payouts
+  email           String
+  apiKeyHash      String   @unique  // SHA-256 hash of the agfac_ API key
+  settlementChain String   @default("base-sepolia") // base-sepolia | base-mainnet | ethereum-mainnet | polygon-mainnet
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  endpoints    AgfacEndpoint[]
+  transactions AgfacTransaction[]
+
+  @@index([slug])
+}
+
+// ── Paywalled API endpoint ───────────────────
+model AgfacEndpoint {
+  id          String   @id @default(cuid())
+  merchantId  String
+  merchant    AgfacMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  path        String   // e.g. "/forecast"
+  targetUrl   String   // Real API URL to proxy to
+  price       String   // USDC base units (6 decimals)
+  description String
+  method      String   @default("GET") // GET | POST
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions AgfacTransaction[]
+
+  @@unique([merchantId, path, method])
+  @@index([merchantId])
+}
+
+// ── Transaction record ───────────────────────
+model AgfacTransaction {
+  id           String   @id @default(cuid())
+  merchantId   String
+  merchant     AgfacMerchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  endpointId   String?
+  endpoint     AgfacEndpoint? @relation(fields: [endpointId], references: [id], onDelete: SetNull)
+  endpointPath String   // denormalized for fast queries
+  price        String   // USDC base units
+  payer        String   // Payer wallet address
+  status       String   @default("success") // success | failed
+  txHash       String?  // On-chain settlement hash
+  errorMessage String?
+  metadata     Json?    // Proxy response, etc.
+  createdAt    DateTime @default(now())
+
+  @@index([merchantId, createdAt])
+  @@index([payer])
+  @@index([status])
+}
