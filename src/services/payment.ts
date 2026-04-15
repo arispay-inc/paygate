@@ -142,8 +142,13 @@ export async function recordNonce(opts: {
 
 // ── Known USDC EIP-712 domains per contract address ──
 
+// EIP-712 domain names differ per USDC deployment.
+// Base Sepolia USDC (0x036CbD5...) uses "USDC".
+// Mainnet contracts (Ethereum, Base, Polygon) use "USD Coin".
+// Using the wrong name produces a valid-looking signature that recovers to
+// a different address → invalid_exact_evm_signature.
 const USDC_DOMAINS: Record<string, { name: string; version: string }> = {
-  [USDC_BASE_SEPOLIA.toLowerCase()]: { name: 'USD Coin', version: '2' },
+  [USDC_BASE_SEPOLIA.toLowerCase()]: { name: 'USDC', version: '2' },
   [USDC_BASE_MAINNET.toLowerCase()]: { name: 'USD Coin', version: '2' },
   [USDC_ETHEREUM_MAINNET.toLowerCase()]: { name: 'USD Coin', version: '2' },
   [USDC_POLYGON_MAINNET.toLowerCase()]: { name: 'USD Coin', version: '2' },
@@ -174,7 +179,7 @@ export function verifyPaymentSignature(
   const knownDomain = USDC_DOMAINS[asset.toLowerCase()];
 
   const domain = {
-    name: knownDomain?.name || 'USD Coin',
+    name: knownDomain?.name || 'USDC',
     version: knownDomain?.version || '2',
     chainId,
     verifyingContract: asset,
