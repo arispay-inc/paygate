@@ -18,7 +18,6 @@ export async function createMerchantInternal(data: {
   slug?: string;
   email: string;
   wallet: string;
-  settlementChain?: string;
 }): Promise<AgfacMerchant> {
   const apiKey = 'agfac_' + randomBytes(24).toString('hex');
   const slug = data.slug || generateSlug(data.name) + '-' + randomBytes(2).toString('hex');
@@ -31,7 +30,6 @@ export async function createMerchantInternal(data: {
       wallet: data.wallet,
       email: data.email,
       apiKeyHash,
-      ...(data.settlementChain && { settlementChain: data.settlementChain }),
     },
   });
 

@@ -4,7 +4,7 @@
  * This module handles real on-chain settlement of x402 payments
  * by calling USDC's transferWithAuthorization contract function.
  *
- * Supports Base Sepolia (testnet) and Base Mainnet, Ethereum, Polygon.
+ * Supports Base Sepolia (testnet), Base Mainnet, Ethereum, Polygon.
  */
 import { ethers } from 'ethers';
 import type { X402PaymentPayload, FacilitatorSettleResponse } from './types.js';
@@ -36,9 +36,9 @@ const USDC_ABI = [
 
 export type SettlementChain =
   | 'base-sepolia'
-  | 'base-mainnet'
-  | 'ethereum-mainnet'
-  | 'polygon-mainnet';
+  | 'base'
+  | 'ethereum'
+  | 'polygon';
 
 export interface ChainConfig {
   usdcAddress: string;
@@ -54,19 +54,19 @@ export const CHAIN_REGISTRY: Record<SettlementChain, ChainConfig> = {
     chainId: CHAIN_ID_BASE_SEPOLIA,
     defaultRpcUrl: RPC_URLS.BASE_SEPOLIA,
   },
-  'base-mainnet': {
+  'base': {
     usdcAddress: USDC_BASE_MAINNET,
     networkId: NETWORK_BASE_MAINNET,
     chainId: CHAIN_ID_BASE_MAINNET,
     defaultRpcUrl: RPC_URLS.BASE_MAINNET,
   },
-  'ethereum-mainnet': {
+  'ethereum': {
     usdcAddress: USDC_ETHEREUM_MAINNET,
     networkId: NETWORK_ETHEREUM_MAINNET,
     chainId: CHAIN_ID_ETHEREUM_MAINNET,
     defaultRpcUrl: 'https://eth.llamarpc.com',
   },
-  'polygon-mainnet': {
+  'polygon': {
     usdcAddress: USDC_POLYGON_MAINNET,
     networkId: NETWORK_POLYGON_MAINNET,
     chainId: CHAIN_ID_POLYGON_MAINNET,
@@ -90,8 +90,8 @@ export function chainFromNetworkId(networkId: string): SettlementChain | undefin
 export interface SettlementConfig {
   /** Private key of the relayer wallet that submits the tx. */
   relayerPrivateKey: string;
-  /** Chain to settle on. Default: 'base-sepolia'. */
-  chain?: SettlementChain;
+  /** Chain to settle on. Required — no implicit default. */
+  chain: SettlementChain;
   /** Custom RPC URL (overrides default). */
   rpcUrl?: string;
 }
@@ -103,7 +103,7 @@ export interface SettlementConfig {
  * the transferWithAuthorization on-chain.
  */
 export function createOnChainSettler(config: SettlementConfig) {
-  const chain = config.chain ?? 'base-sepolia';
+  const chain = config.chain;
   const chainConfig = CHAIN_REGISTRY[chain];
   const rpcUrl = config.rpcUrl ?? chainConfig.defaultRpcUrl;
   const usdcAddress = chainConfig.usdcAddress;
@@ -206,11 +206,11 @@ export function createHybridSettler(config: SettlementConfig) {
         // If on-chain fails, fall back to mock for dev convenience
         console.warn(`[paygate] On-chain settlement failed (${result.errorReason}), falling back to mock`);
         const { mockSettle } = await import('./facilitator.js');
-        return mockSettle(paymentPayload);
+        return mockSettle(paymentPayload, onChain.networkId);
       } catch {
         console.warn('[paygate] On-chain settlement error, falling back to mock');
         const { mockSettle } = await import('./facilitator.js');
-        return mockSettle(paymentPayload);
+        return mockSettle(paymentPayload, onChain.networkId);
       }
     },
   };

@@ -1,5 +1,8 @@
 /**
  * PayGate — Configuration and settlement setup.
+ *
+ * Single-network deployment: one PayGate service handles exactly one chain,
+ * selected via the NETWORK env var. No implicit defaults, no silent fallbacks.
  */
 import 'dotenv/config';
 import {
@@ -31,41 +34,57 @@ function parseCorsOrigin(): string | string[] | boolean {
 
 export const CORS_ORIGIN = parseCorsOrigin();
 
+// ── Network (single-network deployment) ────────────
+
+const VALID_NETWORKS: readonly SettlementChain[] = ['base-sepolia', 'base', 'ethereum', 'polygon'];
+const rawNetwork = process.env.NETWORK;
+if (!rawNetwork || !(VALID_NETWORKS as readonly string[]).includes(rawNetwork)) {
+  console.error(
+    `[startup] NETWORK must be one of: ${VALID_NETWORKS.join(', ')} (got: ${rawNetwork ?? 'unset'})`,
+  );
+  process.exit(1);
+}
+export const NETWORK = rawNetwork as SettlementChain;
+export const NETWORK_ID = CHAIN_REGISTRY[NETWORK].networkId; // CAIP-2 e.g. "eip155:8453"
+
 // ── Settlement ──────────────────────────────────────
 
 export const RELAYER_PRIVATE_KEY = process.env.RELAYER_PRIVATE_KEY || '';
 export const SETTLEMENT_STRICT = !!process.env.SETTLEMENT_STRICT;
 export const SETTLEMENT_MODE = RELAYER_PRIVATE_KEY ? 'on-chain' : 'mock';
 
-/**
- * Build settlers for every supported chain.
- * In strict mode, use createOnChainSettler (no mock fallback).
- * In default mode, use createHybridSettler (falls back to mock on failure).
- */
+// RPC URL for the deployment's network. Sepolia is allowed to fall back to
+// viem/ethers' public RPC; every other network requires an explicit URL or
+// settlement will fail opaquely at transaction time.
+const RPC_ENV_VAR: Record<SettlementChain, string> = {
+  'base-sepolia': 'BASE_SEPOLIA_RPC_URL',
+  'base': 'BASE_MAINNET_RPC_URL',
+  'ethereum': 'ETHEREUM_RPC_URL',
+  'polygon': 'POLYGON_RPC_URL',
+};
+const rpcEnvVar = RPC_ENV_VAR[NETWORK];
+const rpcUrl = process.env[rpcEnvVar] || (NETWORK === 'base-sepolia' ? process.env.BASE_RPC_URL : undefined);
+if (NETWORK !== 'base-sepolia' && !rpcUrl) {
+  console.error(`[startup] NETWORK=${NETWORK} requires ${rpcEnvVar}`);
+  process.exit(1);
+}
+
+// Build exactly one settler for the deployment's network (if relayer key set)
 export const settlers = new Map<SettlementChain, ReturnType<typeof createHybridSettler>>();
 
 if (RELAYER_PRIVATE_KEY) {
-  const rpcOverrides: Partial<Record<SettlementChain, string | undefined>> = {
-    'base-sepolia': process.env.BASE_SEPOLIA_RPC_URL || process.env.BASE_RPC_URL,
-    'base-mainnet': process.env.BASE_MAINNET_RPC_URL,
-    'ethereum-mainnet': process.env.ETHEREUM_RPC_URL,
-    'polygon-mainnet': process.env.POLYGON_RPC_URL,
-  };
-
   const factory = SETTLEMENT_STRICT ? createOnChainSettler : createHybridSettler;
-
-  for (const chain of Object.keys(CHAIN_REGISTRY) as SettlementChain[]) {
-    settlers.set(chain, factory({
-      relayerPrivateKey: RELAYER_PRIVATE_KEY,
-      chain,
-      rpcUrl: rpcOverrides[chain] || undefined,
-    }));
-  }
-
-  const first = settlers.values().next().value!;
-  console.log(`  Settlement: ${SETTLEMENT_STRICT ? 'STRICT ON-CHAIN' : 'ON-CHAIN'} (relayer ${first.relayerAddress.slice(0, 10)}... on ${settlers.size} chains)`);
+  const settler = factory({
+    relayerPrivateKey: RELAYER_PRIVATE_KEY,
+    chain: NETWORK,
+    rpcUrl,
+  });
+  settlers.set(NETWORK, settler);
+  console.log(
+    `  Settlement: ${SETTLEMENT_STRICT ? 'STRICT ON-CHAIN' : 'ON-CHAIN'} (relayer ${settler.relayerAddress.slice(0, 10)}... on ${NETWORK})`,
+  );
 } else {
-  console.log('  Settlement: MOCK (set RELAYER_PRIVATE_KEY for real settlement)');
+  console.log(`  Settlement: MOCK on ${NETWORK} (set RELAYER_PRIVATE_KEY for real settlement)`);
 }
 
 // ── Admin ───────────────────────────────────────────

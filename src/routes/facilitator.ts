@@ -3,12 +3,14 @@
  *
  * Standard x402 facilitator endpoints. Any merchant on the internet
  * can call these to verify/settle payments from agents.
+ *
+ * Single-network deployment: payments with a network != NETWORK_ID are
+ * rejected at settle time with a clear error.
  */
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { settlers, SETTLEMENT_MODE } from '../config.js';
+import { settlers, SETTLEMENT_MODE, NETWORK, NETWORK_ID } from '../config.js';
 import {
-  getNonceStatus,
   reserveNonce,
   confirmNonce,
   releaseNonce,
@@ -19,11 +21,9 @@ import {
   formatUSDC,
   mockSettle,
   CHAIN_REGISTRY,
-  chainFromNetworkId,
   type FacilitatorSettleRequest,
   type FacilitatorSettleResponse,
   type X402ErrorResponse,
-  type SettlementChain,
 } from '../x402/index.js';
 
 // Facilitator merchant ID (set during seed, passed via init)
@@ -40,15 +40,13 @@ export function getFacilitatorMerchantId(): string {
 export default async function facilitatorRoutes(app: FastifyInstance) {
   // ── Discovery ────────────────────────────────────────
   app.get('/facilitator', async (_request, reply) => {
-    const supportedNetworks = (Object.keys(CHAIN_REGISTRY) as SettlementChain[]).map((chain) => {
-      const config = CHAIN_REGISTRY[chain];
-      return {
-        chain,
-        network: config.networkId,
-        asset: config.usdcAddress,
-        settlement: settlers.has(chain) ? 'on-chain' : 'mock',
-      };
-    });
+    const chainConfig = CHAIN_REGISTRY[NETWORK];
+    const supportedNetworks = [{
+      chain: NETWORK,
+      network: NETWORK_ID,
+      asset: chainConfig.usdcAddress,
+      settlement: settlers.has(NETWORK) ? 'on-chain' : 'mock',
+    }];
 
     const relayerAddress = settlers.values().next().value?.relayerAddress;
 
@@ -134,6 +132,16 @@ export default async function facilitatorRoutes(app: FastifyInstance) {
       const auth = paymentPayload.payload.authorization;
       const networkId = paymentRequirements.network;
 
+      // Validate network matches this deployment — reject mismatches loudly
+      // rather than silently settling on the wrong chain.
+      if (networkId !== NETWORK_ID) {
+        return reply.status(400).send({
+          success: false,
+          errorReason: 'network_mismatch',
+          errorMessage: `This facilitator serves ${NETWORK_ID} (${NETWORK}), but the payment declares ${networkId}`,
+        } as FacilitatorSettleResponse);
+      }
+
       // Reserve nonce BEFORE settlement attempt.
       // If the process crashes mid-settlement, the pending nonce
       // prevents a duplicate settlement on retry.
@@ -156,16 +164,16 @@ export default async function facilitatorRoutes(app: FastifyInstance) {
         throw err;
       }
 
-      // Route to the correct chain settler
-      const targetChain = chainFromNetworkId(networkId);
-      const chainSettler = targetChain ? settlers.get(targetChain) : null;
+      // Single-network deployment — either the on-chain settler is configured
+      // (RELAYER_PRIVATE_KEY set) or we mock-settle.
+      const chainSettler = settlers.get(NETWORK);
 
       let result: FacilitatorSettleResponse;
       try {
         if (chainSettler) {
           result = await chainSettler.settle(paymentPayload);
         } else {
-          result = mockSettle(paymentPayload);
+          result = mockSettle(paymentPayload, NETWORK_ID);
         }
       } catch (err) {
         // Settlement threw unexpectedly — release the nonce so agent can retry

@@ -5,7 +5,7 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { BASE_URL, settlers, SETTLEMENT_MODE } from '../config.js';
+import { BASE_URL, settlers, SETTLEMENT_MODE, NETWORK, NETWORK_ID } from '../config.js';
 import { reserveNonce, confirmNonce, releaseNonce, NonceConflictError } from '../services/payment.js';
 import { findEndpointForProxy, proxyToTarget } from '../services/proxy.js';
 import {
@@ -17,7 +17,6 @@ import {
   type AgfacPaymentRequirements,
   type X402PaymentPayload,
   type X402ErrorResponse,
-  type SettlementChain,
 } from '../x402/index.js';
 
 export default async function proxyRoutes(app: FastifyInstance) {
@@ -60,17 +59,13 @@ export default async function proxyRoutes(app: FastifyInstance) {
     const paymentHeader = request.headers['x-payment'] as string | undefined;
 
     if (!paymentHeader) {
-      // Use merchant's settlement chain (or default to base-sepolia)
-      const chain = ((merchant as any).settlementChain || 'base-sepolia') as SettlementChain;
-      const chainConfig = CHAIN_REGISTRY[chain] || CHAIN_REGISTRY['base-sepolia'];
-
       const requirements: AgfacPaymentRequirements = buildAgfacRequirements({
         price: endpoint.price,
         payTo: merchant.wallet,
         resource: `${BASE_URL}/${slug}${path}`,
         description: endpoint.description,
-        asset: chainConfig.usdcAddress,
-        network: chainConfig.networkId,
+        asset: CHAIN_REGISTRY[NETWORK].usdcAddress,
+        network: NETWORK_ID,
       });
 
       return reply
@@ -114,9 +109,7 @@ export default async function proxyRoutes(app: FastifyInstance) {
     };
 
     // ── Reserve nonce before settlement ─────────────────
-    const chain = ((merchant as any).settlementChain || 'base-sepolia') as SettlementChain;
-    const chainConfig = CHAIN_REGISTRY[chain] || CHAIN_REGISTRY['base-sepolia'];
-    const networkId = chainConfig.networkId;
+    const networkId = NETWORK_ID;
 
     try {
       await reserveNonce({ nonce: payload.nonce, network: networkId, from: payload.from });
@@ -134,7 +127,7 @@ export default async function proxyRoutes(app: FastifyInstance) {
     let txHash: string | undefined;
     let settlementError: string | undefined;
 
-    const chainSettler = settlers.get(chain);
+    const chainSettler = settlers.get(NETWORK);
 
     try {
       if (chainSettler) {

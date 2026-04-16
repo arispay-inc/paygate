@@ -32,7 +32,6 @@ model AgfacMerchant {
   wallet          String   // USDC wallet address for payouts
   email           String
   apiKeyHash      String   @unique  // SHA-256 hash of the agfac_ API key
-  settlementChain String   @default("base-sepolia") // base-sepolia | base-mainnet | ethereum-mainnet | polygon-mainnet
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

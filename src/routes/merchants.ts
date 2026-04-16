@@ -3,18 +3,16 @@
  */
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { BASE_URL } from '../config.js';
-import { CHAIN_REGISTRY, formatUSDC, type SettlementChain } from '../x402/index.js';
+import { BASE_URL, NETWORK } from '../config.js';
+import { formatUSDC } from '../x402/index.js';
 import { createMerchantInternal, getMerchantRevenue, hashApiKey } from '../services/merchant.js';
-
-const VALID_CHAINS = Object.keys(CHAIN_REGISTRY);
 
 export default async function merchantRoutes(app: FastifyInstance) {
   // ── Register merchant ────────────────────────────────
   app.post<{
-    Body: { name: string; email: string; wallet: string; settlementChain?: string };
+    Body: { name: string; email: string; wallet: string };
   }>('/api/merchants', async (request, reply) => {
-    const { name, email, wallet, settlementChain } = request.body || {};
+    const { name, email, wallet } = request.body || {};
 
     if (!name || !email || !wallet) {
       return reply.status(400).send({
@@ -26,15 +24,8 @@ export default async function merchantRoutes(app: FastifyInstance) {
         success: false, error: 'Invalid wallet address (must be 0x + 40 hex chars)', code: 'INVALID_WALLET',
       });
     }
-    if (settlementChain && !VALID_CHAINS.includes(settlementChain)) {
-      return reply.status(400).send({
-        success: false,
-        error: `Invalid settlementChain. Must be one of: ${VALID_CHAINS.join(', ')}`,
-        code: 'INVALID_CHAIN',
-      });
-    }
 
-    const merchant = await createMerchantInternal({ name, email, wallet, settlementChain });
+    const merchant = await createMerchantInternal({ name, email, wallet });
     return reply.status(201).send({
       success: true,
       merchant: {
@@ -44,10 +35,11 @@ export default async function merchantRoutes(app: FastifyInstance) {
         wallet: merchant.wallet,
         email: merchant.email,
         apiKey: merchant.apiKey,
+        network: NETWORK,
         proxyBase: `${BASE_URL}/${merchant.slug}`,
         createdAt: merchant.createdAt,
       },
-      message: `Merchant "${merchant.name}" registered. Your proxy base URL is ${BASE_URL}/${merchant.slug}`,
+      message: `Merchant "${merchant.name}" registered on ${NETWORK}. Proxy: ${BASE_URL}/${merchant.slug}`,
     });
   });
 
@@ -125,7 +117,7 @@ export default async function merchantRoutes(app: FastifyInstance) {
     // Only expose wallet + revenue to the merchant themselves
     if (isOwner) {
       response.wallet = merchant.wallet;
-      response.settlementChain = (merchant as any).settlementChain;
+      response.network = NETWORK;
       response.revenue = formatUSDC((await getMerchantRevenue(merchant.id)).toString());
     }
 
@@ -160,7 +152,7 @@ export default async function merchantRoutes(app: FastifyInstance) {
         email: merchant.email,
         wallet: merchant.wallet,
         apiKey: key,
-        settlementChain: (merchant as any).settlementChain,
+        network: NETWORK,
         proxyBase: `${BASE_URL}/${merchant.slug}`,
         endpoints: merchant.endpoints.map((e: any) => ({
           id: e.id,

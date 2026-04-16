@@ -16,8 +16,13 @@ const usedNonces = new Set<string>();
 /**
  * Mock settlement -- validates payment structure, returns fake txHash.
  * Good enough for local testing; no on-chain interaction.
+ * Network must be passed by the caller — it's the deployment's NETWORK_ID
+ * (validated upstream), not a fallback.
  */
-export function mockSettle(paymentPayload: X402PaymentPayload): FacilitatorSettleResponse {
+export function mockSettle(
+  paymentPayload: X402PaymentPayload,
+  networkId: string,
+): FacilitatorSettleResponse {
   const auth = paymentPayload?.payload?.authorization;
   if (!auth) {
     return { success: false, errorReason: 'missing_authorization' };
@@ -38,7 +43,7 @@ export function mockSettle(paymentPayload: X402PaymentPayload): FacilitatorSettl
     success: true,
     payer: auth.from,
     transaction: txHash,
-    network: 'eip155:84532',
+    network: networkId,
   };
 }
 
