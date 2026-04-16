@@ -84,14 +84,35 @@ export default async function proxyRoutes(app: FastifyInstance) {
     }
 
     // ── Decode payment ────────────────────────────────
-    let payload: AgfacPaymentPayload;
+    // Accepts the standard x402 wire format:
+    //   { x402Version, scheme, network, payload: { signature, authorization: { from, to, value, validAfter, validBefore, nonce } } }
+    // Legacy flat AgfacPaymentPayload is no longer emitted by any client.
+    let rawPayment: X402PaymentPayload;
     try {
-      payload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf-8'));
+      rawPayment = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf-8'));
     } catch {
       return reply.status(400).send({
         success: false, error: 'Invalid X-PAYMENT header', code: 'INVALID_PAYMENT',
       } as X402ErrorResponse);
     }
+
+    const auth = rawPayment?.payload?.authorization;
+    if (!auth?.nonce || !auth?.from || !auth?.signature && !rawPayment?.payload?.signature) {
+      return reply.status(400).send({
+        success: false, error: 'Malformed payment payload — missing authorization fields', code: 'INVALID_PAYMENT',
+      } as X402ErrorResponse);
+    }
+
+    // Normalise to flat fields used throughout this handler
+    const payload: AgfacPaymentPayload = {
+      signature: rawPayment.payload.signature,
+      from: auth.from,
+      to: auth.to,
+      value: auth.value,
+      nonce: auth.nonce,
+      validAfter: Number(auth.validAfter),
+      validBefore: Number(auth.validBefore),
+    };
 
     // ── Reserve nonce before settlement ─────────────────
     const chain = ((merchant as any).settlementChain || 'base-sepolia') as SettlementChain;
@@ -119,7 +140,7 @@ export default async function proxyRoutes(app: FastifyInstance) {
     try {
       if (chainSettler) {
         const x402Payload: X402PaymentPayload = {
-          x402Version: 2,
+          x402Version: rawPayment.x402Version ?? 1,
           payload: {
             signature: payload.signature,
             authorization: {
