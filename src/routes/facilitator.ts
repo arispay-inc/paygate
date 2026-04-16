@@ -189,6 +189,7 @@ export default async function facilitatorRoutes(app: FastifyInstance) {
             endpointPath: paymentPayload.resource || paymentRequirements.resource || 'unknown',
             price: auth.value,
             payer: auth.from,
+            payeeAddress: auth.to,
             status: 'success',
             txHash: result.transaction,
             metadata: {
