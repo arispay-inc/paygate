@@ -97,7 +97,7 @@ export default async function proxyRoutes(app: FastifyInstance) {
     }
 
     const auth = rawPayment?.payload?.authorization;
-    if (!auth?.nonce || !auth?.from || !auth?.signature && !rawPayment?.payload?.signature) {
+    if (!auth?.nonce || !auth?.from || !rawPayment?.payload?.signature) {
       return reply.status(400).send({
         success: false, error: 'Malformed payment payload — missing authorization fields', code: 'INVALID_PAYMENT',
       } as X402ErrorResponse);
@@ -107,7 +107,6 @@ export default async function proxyRoutes(app: FastifyInstance) {
     const payload: AgfacPaymentPayload = {
       signature: rawPayment.payload.signature,
       from: auth.from,
-      to: auth.to,
       value: auth.value,
       nonce: auth.nonce,
       validAfter: Number(auth.validAfter),

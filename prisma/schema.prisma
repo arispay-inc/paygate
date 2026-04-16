@@ -72,6 +72,7 @@ model AgfacTransaction {
   endpointPath String   // denormalized for fast queries
   price        String   // USDC base units
   payer        String   // Payer wallet address
+  payeeAddress String?  // Merchant wallet that received payment (auth.to)
   status       String   @default("success") // success | failed
   txHash       String?  // On-chain settlement hash
   errorMessage String?
@@ -80,5 +81,6 @@ model AgfacTransaction {
 
   @@index([merchantId, createdAt])
   @@index([payer])
+  @@index([payeeAddress])
   @@index([status])
 }
